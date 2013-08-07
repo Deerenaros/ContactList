@@ -1,0 +1,88 @@
+<project name="ContactList" default="compile" basedir=".">
+	<description>
+		Test for applying a job.
+	</description>
+	<!-- set global properties for this build -->
+	<property name="src" value="sources"/>
+	<property name="build" value="build"/>
+	<property name="dist"  value="dist"/>
+	<property name="doc"  value="docs"/>
+	<property name="libdir" value="libs"/>
+	<property name="class.main" value="com.ru.reksoft.contacts.Main"/>
+	
+	<path id="classpath">
+		<pathelement path="${classpath}"/>
+		<fileset dir="${libdir}">
+			<include name="**/*.jar"/>
+		</fileset>
+	</path>
+	
+	<target name="init">
+		<tstamp/>
+		<mkdir dir="${build}"/>
+        <mkdir dir="${dist}"/>
+		<mkdir dir="${docs}"/>
+	</target>
+
+	<target name="compile" depends="init" description="Compile the source." >
+		<javac srcdir="${src}" destdir="${build}" classpathref="classpath" />
+	</target>
+	
+	<target name="debug" depends="clean,init" description="Compile the source." >
+		<javac srcdir="${src}" destdir="${build}" classpathref="classpath" />
+		<!--jdb classname="${class.main}" sourcepath="${src}">
+            <classpath>
+                <path refid="classpath"/>
+                <path location="${build}"/>
+            </classpath>
+			<arg line="-I"/>
+        </jdb>
+		<jdb -classpath bin -sourcepath src com.qwertovsky.helloworld.HelloWorld-->
+		<exec executable="jdb">
+			<arg value="-classpath"/>
+			<arg value="${build}:${libdir}/*.jar"/>
+			<arg value="-sourcepath"/>
+			<arg value="${src}"/>
+			<arg value="${class.main}"/>
+		</exec>
+	</target>
+
+	<target name="dist" depends="compile">
+        <jar destfile="${dist}/dist.jar" basedir="${build}">
+            <manifest>
+                <attribute name="Main-Class" value="${class.main}"/>
+            </manifest>
+        </jar>
+    </target>
+	
+	<target name="run" depends="dist">
+        <java fork="true" classname="${class.main}">
+            <classpath>
+                <path refid="classpath"/>
+                <path location="${dist}/dist.jar"/>
+            </classpath>
+			<arg line="-I"/>
+        </java>
+    </target>
+	
+	<target name="clean" description="Deletes build-classes and dist-jars.">
+		<delete dir="${build}"/>
+		<delete dir="${dist}"/>
+		<delete dir="${dist}"/>
+	</target>
+	
+	 <target name="makedoc" depends="init">
+    <javadoc packagenames="com.ru.reksoft.*"
+             sourcepath="${src}"
+             destdir="${doc}"
+             defaultexcludes="yes"
+             author="true"
+             version="true"
+             use="true"
+             windowtitle="Laboratory work number 5" >
+      <doctitle><![CDATA[<h1>Test-work for applying a job. Contact-List</h1>]]></doctitle>
+      <bottom><![CDATA[<i>Copiright! (c) Beerware License.</i>]]></bottom>
+    </javadoc>
+  </target>
+
+</project>
