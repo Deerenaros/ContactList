@@ -1,0 +1,9 @@
+#OS's gens
+ehthumbs.db
+Thumbs.db
+
+#builds and compiled files
+bin/
+build/
+dist/
+docs/
