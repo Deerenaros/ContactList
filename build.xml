@@ -79,7 +79,7 @@
              author="true"
              version="true"
              use="true"
-             windowtitle="Laboratory work number 5" >
+             windowtitle="Contacts" >
       <doctitle><![CDATA[<h1>Test-work for applying a job. Contact-List</h1>]]></doctitle>
       <bottom><![CDATA[<i>Copiright! (c) Beerware License.</i>]]></bottom>
     </javadoc>
