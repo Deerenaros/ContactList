@@ -9,105 +9,137 @@
 
 package com.ru.reksoft.contacts;
 
+import com.google.i18n.phonenumbers.*;
 import com.beust.jcommander.*;
 
-public class Main {
+
+import java.util.*;
+import java.io.File;
+
+class Main {
+	static private interface Functor < R, A > {
+		public R calc ( A arg ) throws Exception;
+	}
+
 	@Parameter ( names = { "-I", "--interactive" }, description = "Launchs in interactive mode" )
 	static private boolean isInteractive = false;
+	@Parameter ( names = { "-s", "--serverpath" }, description = "Path to the server" )
+	static private String serverPath = "home:\\contact-list\\contacts.odb";
+	@Parameter ( names = { "-?", "--help" }, description = "Show help" )
+	static private boolean help = false;
 	
-	static private Contact[] lastSearch;
-	static private java.util.Scanner cin;
-	static private Contacts contacts;
+	static private Map < String, Functor < Object, String[] > >  commands;
 	
-	static public boolean needSave = true;
-	
-	static private void printHelp () {
-		System.out.println ( "This is interactive mode of **best** contact-list application!" );
-		System.out.println ( "To use one you have to use this commnds:" );
-		System.out.println ( "create\n\tThis one create a new contact, than you give this command, program say that to do." );
-		System.out.println ( "print all\n\tJust prints all contacts previously added." );
-		System.out.println ( "search\n\tSearchs all contacts with name like inputed (program will ask)." );
-		System.out.println ( "delete\n\tDeletes contact. Need search previously." );
-		System.out.println ( "exit\n\tSave & Exit the program." );
-		System.out.println ( "quit\n\tJust exit the program." );
-	}
-	
-	static private void create () {
-		lastSearch = null;
-		System.out.println ( "Enter name of contact:" );
-		String name = cin.nextLine ();
-		System.out.println ( "Enter all phones numbers in one line spliting by something like comma:" );
-		String phones = cin.nextLine ();
-		Contact c = contacts.addContact ( name, phones );
-		System.out.println ( "%s has been added!".format ( c.getName() ) );
-	}
-	
-	static private void printall () {
-		System.out.println ( contacts );
-	}
-
-	static private void search () {
-		System.out.println ("As i promised - please, enter the name (or pattern) of a" +
-							" human (or a robot?), whom phone number you want to find.");
-		lastSearch = contacts.search ( cin.nextLine () );
-		if ( lastSearch != null ) {
-			System.out.println ( "#) Human's name (robot's?):\n\tphone #1;\n\tphone #2\n-----------------" );
-			int i = 0;
-			for ( Contact contact: lastSearch ) {
-				System.out.println ( String.format ( "%d) %s", new Integer ( i++ ), contact.getName () ) );
-				for ( String s: contact.getPhones () ) {
-					System.out.println ( "\t" + "%s".format ( s ) );
+	static private HashMap getCommands ( Object obj ) {
+		final Contacts contacts = (Contacts)obj;
+		HashMap < String, Functor < Object, String[] > > cmds = new HashMap ();
+		cmds.put ( "search", new Functor < Object, String[] > () {
+			@Override
+			public Object calc ( String[] arg ) throws Exception {
+				if ( arg.length != 1 ) {
+					throw new Exception ( "Search: Wrong arguments!" );
 				}
-			}
-		} else {
-			System.out.println ( "I think you should firstly though one contact like that you want to find... I mean, no matches." );
-		}
-	}
-	
-	static private void delete () {
-		if ( lastSearch != null ) {
-			System.out.println ( "Input number from last SEARCH operation" );
-		} else {
-			System.out.println ( "Firstly - use search command in order to select applicant to be removed." );
-		}
-	}
-
-	static public void main ( String[] args ) {		
-		new JCommander ( new Main (), args );
-
-		try {
-			contacts = new Contacts ( System.getProperty ( "user.home" ) + "\\test.bin" );
-			
-			if ( isInteractive ) {
-				cin = new java.util.Scanner ( System.in );
-				String input;
-				System.out.println ( "Enter help, if you need one." );
-				while ( !( input = cin.nextLine () ).equals ( "exit" ) ) { //hm... i'm tired
-					switch ( input ) {
-						default: case "help":
-							printHelp ();
-							break;
-						case "create":
-							create ();
-							break;
-						case "print all":
-							printall ();
-							break;
-						case "search":
-							search ();
-							break;
-						case "delete":
-							delete ();
-							break;
-						case "quit":
-							needSave = false;
-							System.exit ( 0 );
-							break;
+				for ( Contact c: contacts.search ( arg[ 0 ] ) ) {
+					System.out.println ( c.getName () );
+					for ( String p: c.getPhones () ) {
+						System.out.println ( String.format ( "\t%s", p ) );
 					}
 				}
+				return null;
+			}
+		} );
+		
+		cmds.put ( "delete", new Functor < Object, String[] > () {
+			@Override
+			public Object calc ( String[] arg ) throws Exception {
+				if ( arg.length != 1 ) {
+					throw new Exception ( "Search: Wrong arguments!" );
+				}
+				
+				if ( contacts.delete ( arg[ 0 ] ) ) {
+					System.out.println ( String.format ( "%s has been deleted", arg[ 0 ] ) );
+				} else {
+					System.out.println ( String.format ( "%s has NOT been deleted", arg[ 0 ] ) );
+				}
+				return null;
+			}
+		} );
+		
+		cmds.put ( "create", new Functor < Object, String[] > () {
+			@Override
+			public Object calc ( String[] arg ) throws Exception {
+				if ( arg.length != 1 ) {
+					throw new Exception ( "Search: Wrong arguments!" );
+				}
+				
+				System.out.println ( String.format ( "Enter %s's phones number", arg[ 0 ] ) );
+				contacts.create ( arg[ 0 ], new Scanner ( System.in ).nextLine () );
+				return null;
+			}
+		} );
+		
+		cmds.put ( "exit", new Functor < Object, String[] > () {
+			@Override
+			public Object calc ( String[] arg ) throws Exception {
+				System.exit ( 0 );
+				return null;
+			}
+		} );
+		
+		cmds.put ( "help", new Functor < Object, String[] > () {
+			@Override
+			public Object calc ( String[] arg ) throws Exception {
+				return null;
+			}
+		} );
+		
+		return cmds;
+	}
+	
+	static public void main ( String[] args ) {
+		try {
+			new JCommander ( new Main (), args );
+		} catch ( Exception e ) {
+			new JCommander ( new Main () ).usage ();
+			System.out.println ( "But: %s".format ( e.getMessage () ) );
+			System.exit ( 1 );
+		} finally {
+			if ( help ) {
+				new JCommander ( new Main () ).usage ();
+				System.exit ( 0 );
+			}
+			if ( serverPath.indexOf ( "home:" ) == 0 ) {
+				serverPath = System.getProperty ( "user.home" ) + serverPath.substring ( "home:".length() );
+				File serv = new File ( serverPath );
+				if ( !serv.exists () &&
+				!serv.getParentFile ().exists () &&
+				!serv.getParentFile ().mkdirs () ) {
+					System.out.println ( "Illegal server filename! Exiting..." );
+					System.exit ( 1 );
+				}
+			}
+		}
+		
+		
+		try {
+			Contacts contacts = new Contacts ( serverPath );
+			Scanner cin = new Scanner ( System.in );
+			Map commands = getCommands ( contacts );
+			if ( isInteractive ) {
+				for ( ;; ) {
+					try {
+						String[] cmd = cin.nextLine ().split ( " " );
+						Functor f = (Functor) commands.get ( cmd[ 0 ] );
+						f.calc ( Arrays.copyOfRange ( cmd, 1, cmd.length ) );
+					} catch ( Exception e ) {
+						System.out.println ( String.format ( "ERROR: %s ", e.getMessage () ) );
+					}
+				}
+			} else {
+				//to do
 			}
 		} catch ( Throwable e ) {
-			e.getMessage();
+			System.out.println ( String.format ( "FATAL ERROR: %s", e.getMessage () ) );
 		}
 	}
 }

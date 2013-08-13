@@ -10,6 +10,7 @@
 package com.ru.reksoft.contacts;
 
 import com.google.i18n.phonenumbers.*;
+import javax.persistence.*;
 
 import java.util.*;
 import java.io.*;
@@ -21,22 +22,38 @@ import java.io.*;
  * first name, or just nickname - no difference);<br>
  * list of phone numbers (without naming ones);<br>  
  * and additional information with any data also could 
- * stored;<br>                                        
+ * stored;<br>
  ******************************************************/
-public class Contact implements Comparable < Contact >, Serializable {
+@Entity public class Contact implements Comparable < Contact >, Serializable {
 /*******************************************************
- * Defines name of person
+ * Simply class to store phone number in order
+ * to allow ObjectDB store instances of this class
  ******************************************************/
+	@Embeddable static class PNumber {
+		public long code;
+		public long number;
+		
+		public PNumber ( Phonenumber.PhoneNumber p ) {
+			code = p.getCountryCode ();
+			number = p.getNationalNumber();
+		}
+		
+		@Override
+		public String toString () {
+			return "+" + code + " " + number;
+		}
+	}
+/*******************************************************
+ * Defines name of person, also using as id
+ ******************************************************/
+	@Id
 	private String myName;
 /*******************************************************
  * Contains all phone number, that are associated with
  * person
  ******************************************************/
-	private List < Phonenumber.PhoneNumber > myPhonesNumbers;
-/*******************************************************
- * Contains all additional information about person
- ******************************************************/	
-	private Map < String, Object > myAdditionalInformation;
+	@OneToMany
+	private List < PNumber > myPhonesNumbers;
 
 /*******************************************************
  * Construct contact from
@@ -48,13 +65,10 @@ public class Contact implements Comparable < Contact >, Serializable {
 		PhoneNumberUtil util = PhoneNumberUtil.getInstance ();
 		myName = name;
 		myPhonesNumbers = new LinkedList ();
-		myAdditionalInformation = new HashMap ();
 		
 		Iterator < PhoneNumberMatch > i = util.findNumbers ( phones, "RU" ).iterator ();
 		while ( i.hasNext () ) {
-			Phonenumber.PhoneNumber p;
-			myPhonesNumbers.add ( p = i.next ().number () );
-			System.out.println ( util.format ( p, PhoneNumberUtil.PhoneNumberFormat.INTERNATIONAL ) );
+			myPhonesNumbers.add ( new PNumber ( i.next ().number () ) );
 		}
 	}
 /*******************************************************
@@ -72,8 +86,8 @@ public class Contact implements Comparable < Contact >, Serializable {
 		PhoneNumberUtil util = PhoneNumberUtil.getInstance ();
 		List< String > lst = new ArrayList ();
 		
-		for ( Phonenumber.PhoneNumber p: myPhonesNumbers ) {
-			lst.add ( util.format ( p, PhoneNumberUtil.PhoneNumberFormat.INTERNATIONAL ) );
+		for ( PNumber p: myPhonesNumbers ) {
+			lst.add ( p.toString () );
 		}
 		
 		return lst.toArray ( new String[0] );
@@ -82,6 +96,9 @@ public class Contact implements Comparable < Contact >, Serializable {
 /*******************************************************
  * Comparing two contacts firstly by name, secondary
  * by phone numbers. In lexicographical order
+ * @return	Negative, if aurgument lesser than self,
+ *			positive, if self lesser aurgument,
+ *			otherwise - 0
  ******************************************************/
 	@Override
 	public int compareTo ( Contact cnt ) {
@@ -103,5 +120,10 @@ public class Contact implements Comparable < Contact >, Serializable {
 		}
 		
 		return false;
+	}
+	
+	@Override
+	public String toString () {
+		return myName + ": " + myPhonesNumbers;
 	}
 }

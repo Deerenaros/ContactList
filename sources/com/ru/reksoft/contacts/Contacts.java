@@ -15,55 +15,61 @@ import java.io.*;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
+/*******************************************************
+ * Contacts manager class. It's organaze connect with
+ * server, providing methods to store, search and
+ * delete contacts
+ ******************************************************/
 public class Contacts {
-	private String myFilename;
-	private List < Contact > myContacts;
+/*******************************************************
+ * Private member type of SimplyServer, what using in
+ * order to connect with server
+ ******************************************************/
+	private SimplyServer myServer;
 
-	public Contacts ( String filename ) throws Throwable {
-		File file = new File ( myFilename = filename );
-		if ( !file.createNewFile () ) {
-			try {
-				myContacts = (List)( new ObjectInputStream ( new FileInputStream ( myFilename ) ) ).readObject ();
-			} catch ( Exception e ) {
-				if ( e instanceof java.io.InvalidClassException ) {
-					System.out.println ( "Sorry my friend, but i see, that you use too new version of this program..." );
-					System.exit ( 42 );
-				} else {
-					throw e;
-				}
-			}
-		} else {
-			myContacts = new LinkedList ();
+/*******************************************************
+ * Construct contact manager
+ ******************************************************/
+	public Contacts ( String filename ) throws Exception {
+		try {
+			myServer = new SimplyServer ( filename );
+		} catch ( Exception e ) {
+			System.out.println ( e.getMessage () );
 		}
-		
-		Runtime.getRuntime ().addShutdownHook ( new Thread () {
-			@Override
-			public void run () {
-				if ( Main.needSave ) {
-					System.out.println ( "Saving..." );
-					onfinalize ();
-				}
-			}
-		} );
 	}
-	
-	public Contact addContact ( String name, String phones ) {
+
+/*******************************************************
+ * Create method, works like factory
+ * @param name Name is personal identificator in our
+ * life, so it's identificator in this programm ;)
+ * @param phones String, that must contains all phones
+ * connected with named person
+ ******************************************************/
+	public Contact create ( String name, String phones ) throws Exception {
 		Contact c = new Contact ( name, phones );
-		myContacts.add ( c );
+		myServer.put ( c );
+		myServer.commit ();
 		return c;
 	}
-	
-	public void delete ( int i ) {
-		myContacts.remove ( i );
+/*******************************************************
+ * Delete contact from database by name (id)
+ * @param name Personal id - name
+ ******************************************************/	
+	public boolean delete ( String name ) throws Exception {
+		if ( myServer.remove ( name ) ) {
+			myServer.commit ();
+			return true;
+		} return false;
 	}
-	
-	public void delete ( Contact c ) {
-		myContacts.remove ( c );
-	}
-	
-	public Contact[] search ( String namePattern ) {
+/*******************************************************
+ * Search all contacts by name pattern
+ * @param namePattern Pattern of the name with
+ * java's regex sintax
+ ******************************************************/
+	public Contact[] search ( String namePattern ) throws Exception {
 		Pattern pattern =  Pattern.compile ( namePattern );
-		List< Contact > lst = new ArrayList ();
+		List< Contact > myContacts = myServer.getAll (),
+			lst = new LinkedList ();
 
 		for ( Contact c: myContacts ) {
 			Matcher matcher = pattern.matcher ( c.getName() );
@@ -72,35 +78,12 @@ public class Contacts {
 			}
 		}
 		
-		return ( lst.size() > 0 ? lst.toArray ( new Contact[0] ) : null );
-	}
-	
-	public void onfinalize () {
-		try {
-			new ObjectOutputStream ( new FileOutputStream ( myFilename, false ) ).writeObject ( myContacts );
-		} catch ( Throwable e ) {
-			e.getMessage();
-		}
-	}
-	
-	@Override
-	public void finalize () {
-		onfinalize ();
+		return lst.toArray ( new Contact[ 0 ] );
 	}
 	
 	@Override
 	public String toString () {
-		System.out.println ( "Human's name: phone #1; phone #2\n-----------------" );	
 		StringBuilder sb = new StringBuilder ( "" );
-		
-		boolean first = true;
-		for ( Contact c: myContacts ) {
-			if ( first ) first = false; else sb.append ( "\n" );
-			sb.append ( c.getName () + ": " );
-			for ( String phone: c.getPhones () ) {
-				sb.append ( phone + "; " );
-			}
-		}
 		
 		return sb.toString();
 	}

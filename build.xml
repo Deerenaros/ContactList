@@ -2,56 +2,39 @@
 	<description>
 		Test for applying a job.
 	</description>
-	<!-- set global properties for this build -->
-	<property name="src" value="sources"/>
-	<property name="build" value="build"/>
-	<property name="dist"  value="dist"/>
-	<property name="doc"  value="docs"/>
-	<property name="libdir" value="libs"/>
+	<!-- set global properties for this dir.build -->
+	<property name="dir.src" value="sources"/>
+	<property name="dir.tests" value="sources/tests"/>
+	<property name="dir.build" value="build"/>
+	<property name="dir.dist"  value="dist"/>
+	<property name="dir.docs"  value="docs"/>
+	<property name="dir.libs" value="libs"/>
 	<property name="class.main" value="com.ru.reksoft.contacts.Main"/>
 	
 	<path id="classpath">
 		<pathelement path="${classpath}"/>
-		<fileset dir="${libdir}">
+		<fileset dir="${dir.libs}">
 			<include name="**/*.jar"/>
 		</fileset>
 	</path>
 	
 	<target name="init">
 		<tstamp/>
-		<mkdir dir="${build}"/>
-        <mkdir dir="${dist}"/>
-		<mkdir dir="${docs}"/>
+		<mkdir dir="${dir.build}"/>
+        <mkdir dir="${dir.dist}"/>
+		<mkdir dir="${dir.docs}"/>
 	</target>
 
 	<target name="compile" depends="init" description="Compile the source." >
-		<javac srcdir="${src}" destdir="${build}" classpathref="classpath" />
-	</target>
-	
-	<target name="debug" depends="clean,init" description="Compile the source." >
-		<javac srcdir="${src}" destdir="${build}" classpathref="classpath" />
-		<!--jdb classname="${class.main}" sourcepath="${src}">
-            <classpath>
-                <path refid="classpath"/>
-                <path location="${build}"/>
-            </classpath>
-			<arg line="-I"/>
-        </jdb>
-		<jdb -classpath bin -sourcepath src com.qwertovsky.helloworld.HelloWorld-->
-		<exec executable="jdb">
-			<arg value="-classpath"/>
-			<arg value="${build}:${libdir}/*.jar"/>
-			<arg value="-sourcepath"/>
-			<arg value="${src}"/>
-			<arg value="${class.main}"/>
-		</exec>
+		<javac includeantruntime="false" srcdir="${dir.src}" destdir="${dir.build}" classpathref="classpath" />
 	</target>
 
 	<target name="dist" depends="compile">
-        <jar destfile="${dist}/dist.jar" basedir="${build}">
+        <jar destfile="${dir.dist}/${ant.project.name}.jar" basedir="${dir.build}">
             <manifest>
                 <attribute name="Main-Class" value="${class.main}"/>
             </manifest>
+			<zipgroupfileset dir="${dir.libs}" includes="**/*.jar" />
         </jar>
     </target>
 	
@@ -59,30 +42,52 @@
         <java fork="true" classname="${class.main}">
             <classpath>
                 <path refid="classpath"/>
-                <path location="${dist}/dist.jar"/>
+                <path location="${dir.dist}/${ant.project.name}.jar"/>
             </classpath>
 			<arg line="-I"/>
         </java>
     </target>
 	
-	<target name="clean" description="Deletes build-classes and dist-jars.">
-		<delete dir="${build}"/>
-		<delete dir="${dist}"/>
-		<delete dir="${dist}"/>
+	<target name="testit" depends="dist">
+		<junit
+		haltonerror="yes"
+		printsummary="yes"
+		haltonfailure="yes"
+		showoutput="yes"
+		logfailedtests="on"
+		filtertrace="off">
+			<formatter type="plain" usefile="false" />
+			<classpath>
+                <path refid="classpath"/>
+				<pathelement path="${build}"/>
+				<pathelement location="${dir.libs}/junit.jar"/>
+			</classpath>
+			<batchtest fork="yes">
+				<fileset dir="${dir.tests}">
+					<include name="**/*.java"/>
+				</fileset>
+			</batchtest>
+		</junit>
 	</target>
 	
-	 <target name="makedoc" depends="init">
-    <javadoc packagenames="com.ru.reksoft.*"
-             sourcepath="${src}"
-             destdir="${doc}"
-             defaultexcludes="yes"
-             author="true"
-             version="true"
-             use="true"
-             windowtitle="Contacts" >
-      <doctitle><![CDATA[<h1>Test-work for applying a job. Contact-List</h1>]]></doctitle>
-      <bottom><![CDATA[<i>Copiright! (c) Beerware License.</i>]]></bottom>
-    </javadoc>
+	<target name="clean" description="Deletes dir.build-classes and dir.dist-jars.">
+		<delete dir="${dir.build}"/>
+		<delete dir="${dir.dist}"/>
+		<delete dir="${dir.dist}"/>
+	</target>
+	
+	<target name="makedocs" depends="compile">
+		<javadoc packagenames="com.ru.reksoft.*"
+				 sourcepath="${dir.src}"
+				 destdir="${dir.docs}"
+				 defaultexcludes="yes"
+				 author="true"
+				 version="true"
+				 use="true"
+				 windowtitle="Contacts" >
+			<doctitle><![CDATA[<h1>Test-work for applying a job. Contact-List</h1>]]></doctitle>
+			<bottom><![CDATA[<i>Copiright! (c) Beerware License.</i>]]></bottom>
+		</javadoc>
   </target>
 
 </project>
